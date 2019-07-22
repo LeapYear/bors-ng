@@ -1,3 +1,5 @@
+(This is LeapYear's fork of an upstream repository.)
+
 A merge bot for GitHub pull requests
 ====================================
 
