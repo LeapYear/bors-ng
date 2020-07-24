@@ -11,6 +11,7 @@ erl_crash.dump
 
 # Static artifacts
 /node_modules
+/assets/node_modules
 
 # Generated documentation
 /doc
@@ -19,3 +20,8 @@ erl_crash.dump
 # we ignore priv/static. You may want to comment
 # this depending on your deployment strategy.
 /priv/static/
+
+/.idea
+/*.iml
+/projectFilesBackup
+/projectFilesBackup1
