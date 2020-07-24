@@ -3,8 +3,14 @@
 A merge bot for GitHub pull requests
 ====================================
 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/bors-ng/bors-ng)
+
+[![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/3)
+
 [Bors-NG] implements a continuous-testing workflow where the master branch never breaks.
 It integrates GitHub pull requests with a tool like [Travis CI] that runs your tests.
+
+Other resources:
 
 * [Home page](https://bors.tech/)
 * [Documentation](https://bors.tech/documentation/)
@@ -67,7 +73,7 @@ this workflow.
 
 Bors is a [GitHub Application], so (assuming you already have Travis CI set up), getting bors set up requires two steps:
 
- 1. Add the app to your repo in GitHub.
+ 1. Add the app to your repo in GitHub. [Click here to use the publicly hosted instance.](https://github.com/apps/bors/installations/new)
  2. Commit a bors.toml with these contents:
 
         status = ["continuous-integration/travis-ci/push"]
@@ -78,7 +84,7 @@ To use it, you need to stop clicking the big green merge button, and instead lea
 
 As commits are reviewed, bors lumps them into a queue of batches. If everything passes, there will just be two batches; the one that's running, and the one that's waiting to be run (and is accumulating more and more pull requests until it gets a chance to run).
 
-To run a batch, bors creates a merge commit, merging master with all the pull requests that make up the batch. They'll look like this:
+To run a batch, bors creates a merge commit, merging master with all the pull requests that make up the batch. Instead of pushing the merge commit to `master` immediately, however, it will instead push it to the `staging` branch. They'll look like this:
 
     Merge #5 #7 #8
 
@@ -119,6 +125,8 @@ When a batch cannot be bisected (because it only contains one PR), it gets kicke
 
 Note that you can watch this process running on the [dashboard page] if you want.
 
+As a convenience, you can also run `bors try`, which will kick off a build the same way `r+` would, but without actually pushing it to master even if it does succeed. To help keep them separate, `r+` merge commits go in `staging` and `try` builds go in `trying`.
+
 [Bors-NG]: https://bors.tech/
 [GitHub Application]: https://github.com/settings/installations
 [Travis CI]: https://travis-ci.org/
@@ -132,9 +140,10 @@ The batching strategy is O(E log N), where N is again the total number of pull r
 
 # How to run it on your local machine
 
+If you're using a macOS or Linux command line with Docker on it,
 `./script/setup && ./script/server` will set up a local instance,
 with a mocked-out GitHub instance, using Docker to pull in all the underlying dependencies.
-The web server ends up running on <http://localhost:4000/>.
+The web server ends up running on <http://localhost:8000/>.
 You can get an Elixir REPL running in the same context as the webserver by running
 `repl` instead of `server`. To run the tests, run `test` instead of `server`.
 
@@ -151,6 +160,7 @@ and the [WebhookController] and [GitHub ServerMock] to create the repo.
 
 The main things you'll need to run Bors on your laptop are:
 
+  * Familiarity with the command line
   * Elixir, with a full installation of OTP (the `esl-erlang` package is sufficient)
   * PostgreSQL; the configuration for it is in config/dev.exs
   * Stock C compilation tools, because some of bors's dependencies use NIFs
@@ -164,11 +174,11 @@ and the Visual C++ build tools from Microsoft.
 [Portable PostgreSQL]: https://sourceforge.net/projects/postgresqlportable/
 [Chocolatey]: https://chocolatey.org/packages/Elixir
 
-You can then just run it using `mix`:
+You can then run it using `mix`:
 
     $ mix ecto.create
     $ mix ecto.migrate
-    $ mix phoenix.server
+    $ mix phx.server
 
 And it'll run with the GitHub API mocked-out.
 
@@ -221,20 +231,31 @@ For each of these sections, set the following overall section permissions and ch
   - (no checkboxes)
 - *Single file*: No access
 - *Repository projects*: No access
-- *Organization members*: No access
+- *Organization members*: Read-only
+  - *Team* (Team is created, deleted, edited, added to/removed from a repository)
+  - *Member* (Collaborator added to, removed from, or has changed permissions for a repository)
+  - *Membership* (Team membership added or removed)
+  - *Organization* ( User invited to, added to, or removed from an organization)
 - *Organization projects*: No access
+- *Checks*: Read & Write
+  - *Check run* (Check run created from the API)
+  - *Check suite* (Check suite created from the API)
 
 #### Permission explanations
 
 *Repository metadata* will be read-only. Must be set to receive *Repository* events to automatically remove entries from our database when a repo is deleted.
 
-*Commit statuses* must be set to *Read & write* to report a testing status. Also must get *Status* events to integrate with CI systems that report their status via GitHub.
+*Commit statuses* must be set to *Read & write* to report a testing status (this is the older version). Also must get *Status* events to integrate with CI systems that report their status via GitHub.
 
 *Issues* must be set to *Read & write* because pull requests are issues. *Issue comment* events must be enabled to get the "bors r+" comments. If *Issues* is set to Read-only, repos will end up with pull requests that are marked as simultaneously merged and opened.
 
 *Pull requests* must be set to *Read & write* to be able to post pull request comments. Also, must receive *Pull request* events to be able to keep the dashboard working, and must get *Pull request review* and *Pull request review comment* events to get those kinds of comments.
 
-*Repository contents*: Must be set to *Read-write* to be able to create merge commits.
+*Repository contents* must be set to *Read & write* to be able to create merge commits.
+
+*Checks* must be set to *Read & write* to report a testing status (this is the newer version). Also must get *Check run* events to integrate with CI systems that report their status via GitHub.
+
+*Organization members* must be set to *Read only* to synchronize repository contributors and bors reviewers.
 
 ### After you click the "Create" button
 
@@ -270,19 +291,23 @@ Whatever machine you plan to run it on needs to have both of those installed.
 [PostgreSQL]: https://postgresql.org/
 [docs on how to deploy phoenix apps]: http://www.phoenixframework.org/docs/deployment
 
-bors-ng is built on the Phoenix web framework, and they have [docs on how to deploy phoenix apps] already. Where you deploy will determine the what the dashboard URL will be, which is needed in the previous steps, so this decision needs to be made before you can set up the Github App.
+bors-ng is built on the Phoenix web framework, and they have [docs on how to deploy phoenix apps] already. Where you deploy will determine what the dashboard URL will be, which is needed in the previous steps, so this decision needs to be made before you can set up the Github App.
 
 You'll need to edit the configuration with a few bors-specific variables.
 
-### Deploying on Heroku (and other 12-factor-style systems)
+### Deploying on [Heroku] (and other 12-factor-style systems)
 
-The config file in the repository is already set up to pull the needed information from the environment, so just set the right env variables and deploy the app:
+[Heroku]: https://heroku.com/
 
-You can do it the easy way:
+The config file in the repository is already set up to pull the needed information from the environment, so you can configure bors by setting the right env variables and deploy the app from this repository into Heroku:
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+You can do using Heroku's one-button-deploy system:
+
+[![Deploy on Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 Or you can do it manually:
+
+**Note**: The `GITHUB_INTEGRATION_ID` is now called the App ID on GitHub.
 
     $ heroku create --buildpack "https://github.com/HashNuke/heroku-buildpack-elixir.git" bors-app
     $ heroku buildpacks:add https://github.com/gjaldon/heroku-buildpack-phoenix-static.git
@@ -292,6 +317,7 @@ Or you can do it manually:
         POOL_SIZE=18 \
         PUBLIC_HOST=bors-app.herokuapp.com \
         ALLOW_PRIVATE_REPOS=true \
+        COMMAND_TRIGGER=bors \
         SECRET_KEY_BASE=<SECRET1> \
         GITHUB_CLIENT_ID=<OAUTH_CLIENT_ID> \
         GITHUB_CLIENT_SECRET=<OAUTH_CLIENT_SECRET> \
@@ -306,7 +332,9 @@ It can recover the information after restarting, but it will not work correctly 
 If you need more throughput than one dyno can provide, you should deploy using a system that allows Erlang clustering to work.
 
 
-### Deploying using Docker (and compatible container orchestration systems)
+### Deploying using [Docker] (and compatible container orchestration systems)
+
+[Docker]: https://docker.com/
 
 Pre-built Docker images are available at [Docker Hub](https://hub.docker.com/r/borsng/bors-ng/) for tags and the current `master` (as `bors-ng:latest`).
 
@@ -317,7 +345,7 @@ to generate a slim image without the Erlang, Elixir and NodeJS development tools
 Most of the important configuration options should be set at runtime using environment variables, not unlike the Heroku instructions.
 All the same recommendations apply, with some extra notes:
 
-- `ELIXIR_VERSION` can be set as a build-time argument, and defaults to `1.4.5`
+- `ELIXIR_VERSION` can be set as a build-time argument. Its default value is defined in the [Dockerfile](Dockerfile).
 - `ALLOW_PRIVATE_REPOS` must be set at both build and run times to take effect. It is set to ` true` by default.
 - `DATABASE_URL` *must* contain the database port, as it will be used at container startup to wait until the database is reachable. [The format is documented here](https://hexdocs.pm/ecto/Ecto.Repo.html#module-urls).
 - The database schema will be automatically created and migrated at container startup, unless the ` DATABASE_AUTO_MIGRATE`  env. var.
@@ -341,6 +369,7 @@ All the same recommendations apply, with some extra notes:
           -e DATABASE_URL="postgresql://postgres:<secret>@db:5432/bors_ng" \
           -e DATABASE_USE_SSL=false \
           -e DATABASE_AUTO_MIGRATE=true \
+          -e COMMAND_TRIGGER=bors \
           borsng/bors-ng
       docker start bors
 

@@ -9,21 +9,12 @@ defmodule BorsNG.Database.User do
   @type t :: %User{}
 
   schema "users" do
-    field :user_xref, :integer
-    field :login, :string
-    field :is_admin, :boolean, default: false
-    many_to_many :projects, Project, join_through: LinkUserProject
+    field(:user_xref, :integer)
+    field(:login, :string)
+    field(:is_admin, :boolean, default: false)
+    many_to_many(:projects, Project, join_through: LinkUserProject)
 
     timestamps()
-  end
-
-  def has_perm(_repo, %User{is_admin: true}, _project_id) do
-    true
-  end
-
-  def has_perm(repo, %User{id: id}, project_id) do
-    params = [project_id: project_id, user_id: id]
-    not is_nil repo.get_by(LinkUserProject, params)
   end
 
   @doc """

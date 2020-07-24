@@ -8,14 +8,10 @@ Answering support questions
 ---------------------------
 
 If you've been using bors a lot,
-you can help other people use it by answering questions on the [support forum] and the [gitter room].
-You can log in to both using your Github account.
-The more you interact on the forum,
-the more tools you will have to help organize the discussion (for example, fixing other people's categories).
-
+you can help other people use it by answering questions on the [support forum].
+It's running on Discourse, the same app used by Elixir Forum and Rust Users.
 
 [support forum]: https://forum.bors.tech/
-[gitter room]: https://gitter.im/bors-ng/Lobby
 
 
 Submitting bug reports
@@ -78,13 +74,20 @@ Finding something to work on
 ----------------------------
 
 If you're not sure what to work on,
-there's a list of easy-to-fix problems to get you started at <https://bors-ng.github.io/starters>.
+there's a list of easy-to-fix problems to get you started at <https://bors.tech/starters>.
 After you pick an issue,
 you should mention that you're working on it in a GitHub comment
 (so that we can mark it as assigned and avoid duplicate work).
 If you're having trouble fixing the problem,
 go ahead and ask questions right in the issue's comments section,
 even if your question seems unrelated to the issue itself.
+
+
+Proposing and adding new features
+---------------------------------
+
+If you'd like to add a new feature, or make big changes to the way bors works,
+head over to the [RFC](https://forum.bors.tech/t/about-the-draft-rfcs-category/291) area in the forum and follow the instructions.
 
 
 What do the tags in the issue tracker mean?
@@ -155,3 +158,57 @@ The primary programming language this will need to be implemented in. If none is
 This is the only type of tag that is added to pull requests.
 
 * S-do-not-merge-yet: Do not merge this pull request.
+
+Developing locally
+------------------
+
+To work on bors-ng you will need:
+
+1. Erlang and Elixir installed and in PATH
+2. a local database instance, bors uses Postgres by default
+
+You can install Erlang and Elixir as you prefer, one way to do it without
+affecting other development environments is with [asdf](https://asdf-vm.com/#/). The following shows you how to use asdf. If you already have Erlang and Elixir installed
+or prefer to install them in another way just skip to the next section.
+
+**NOTE**: please check the Erlang and Elixir versions against `.travis.yml` to make sure you are using a supported version.
+
+### Installing Erlang and Elixir with asdf
+
+To get started developing on bors with asdf install it as per the docs, then
+install Erlang and Elixir with the following commands (we assume you're on linux,
+YMMV on other OSs):
+
+```sh
+asdf plugin-add erlang
+asdf install erlang 21.0.9
+asdf plugin-add elixir
+asdf install elixir 1.8.1
+# in the parent directory
+cat<<EOF > ../.tool-versions
+elixir 1.8.1
+erlang 21.0.9
+EOF
+```
+
+**NOTE**: please double check the Erlang and Elixir versions against `.travis.yml` to make sure you are using a supported version.
+
+### Running tests locally
+
+You are now set for developing locally. For example to run the tests you will just have to start a postgres instance on localhost, using docker is the simplest way:
+
+```sh
+docker run -it --rm --net=host -e POSTGRES_PASSWORD=Postgres1234 postgres:11.2
+```
+
+then in another shell you can run the tests as simply as:
+
+```sh
+mix test
+```
+
+to run a single test suite/case just pass the relative path to the test name and optionally the line number:
+
+```sh
+mix test test/batcher/batcher_test.exs:3878
+```

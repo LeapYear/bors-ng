@@ -6,8 +6,8 @@
     </a>
   </h1>
 </div>
-<div class=tabs role=tabs>
-  <span class="tab tab--active">Pull requests</span>
+<div class=tabs role=navigation>
+  <span class="tab tab--active" aria-selected=true>Pull requests</span>
   <%= if @mode == :rw do %>
   <%= link "History", to: project_path(@conn, :log, @project), class: "tab" %>
   <%= link "Settings", to: project_path(@conn, :settings, @project), class: "tab" %>
@@ -21,37 +21,6 @@
   Nothing to see here
 <% else %>
 <table class="table">
-<%= if @unbatched_patches != [] do %>
-  <thead>
-    <tr role=heading><td aria-role=presentation colspan=4>
-      <h2 class=header>
-        Awaiting review
-        <span class=header-count><%= Enum.count(@unbatched_patches) %></span>
-      </h2>
-    </td></tr>
-    <tr role=row><th>#</th><th>Title</th><th>Priority</th><th>Commit</th></tr>
-  </thead>
-  <tbody>
-  <%= for patch <- @unbatched_patches do %>
-    <tr role="row">
-      <td>
-        <%= patch.pr_xref %>
-      </td>
-      <td class="fill-link">
-        <a href="<%= Confex.fetch_env!(:bors, :html_github_root) %>/<%= @project.name %>/pull/<%= patch.pr_xref %>">
-          <%= patch.title %>
-        </a>
-      </td>
-      <td>
-        <%= patch.priority %>
-      </td>
-      <td>
-        <%= truncate_commit(patch.commit) %>
-      </td>
-    </tr>
-  <% end %>
-  </tbody>
-<% end %>
 <%= for batch <- @batches do %>
   <thead>
     <tr role=heading><td aria-role=presentation colspan=4>
@@ -83,13 +52,44 @@
   <% end %>
   </tbody>
 <% end %>
+<%= if @unbatched_patches != [] do %>
+  <thead>
+    <tr role=heading><td aria-role=presentation colspan=4>
+      <h2 class=header>
+        Awaiting review
+        <span class=header-count><%= Enum.count(@unbatched_patches) %></span>
+      </h2>
+    </td></tr>
+    <tr role=row><th>#</th><th>Title</th><th>Priority</th><th>Commit</th></tr>
+  </thead>
+  <tbody>
+  <%= for patch <- @unbatched_patches do %>
+    <tr role="row">
+      <td>
+        <%= patch.pr_xref %>
+      </td>
+      <td class="fill-link">
+        <a href="<%= Confex.fetch_env!(:bors, :html_github_root) %>/<%= @project.name %>/pull/<%= patch.pr_xref %>">
+          <%= patch.title %>
+        </a>
+      </td>
+      <td>
+        <%= patch.priority %>
+      </td>
+      <td>
+        <%= truncate_commit(patch.commit) %>
+      </td>
+    </tr>
+  <% end %>
+  </tbody>
+<% end %>
 </table>
 <% end %>
 
 </div></main>
 
 <%= if @mode == :rw do %>
-<div class="wrapper wrapper--mini" role=toolbar><div class=toolbar>
+<footer><div class="wrapper wrapper--mini" role=toolbar><div class=toolbar>
 <%= if @is_synchronizing do %>
   <span class="toolbar-item toolbar-item--disabled">Synchronizing...</span>
 <% else %>
@@ -98,5 +98,5 @@
 <%= if @batches != [] do %>
   <%= link "Cancel all", to: project_path(@conn, :cancel_all, @project), method: :delete, class: "toolbar-item toolbar-item--remove", data: [confirm: "Commenting `bors r-` on a PR will cancel just the one. You asked to cancel all of them, which is a PITA to undo.\n\nAre you sure you want to cancel all running and waiting pull requests?"] %>
 <% end %>
-</div></div>
+</div></div></footer>
 <% end %>
