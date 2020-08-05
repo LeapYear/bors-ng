@@ -80,9 +80,9 @@ defmodule BorsNG.Worker.Attemptor do
           |> send_message(patch, {:preflight, :ci_skip})
         else
           patch
-          |> Attempt.new(arguments)
+          |> Attempt.new()
           |> Repo.insert!()
-          |> maybe_start_attempt(project)
+          |> start_attempt(project, patch, arguments)
         end
 
       [_attempt | _] ->
@@ -168,14 +168,7 @@ defmodule BorsNG.Worker.Attemptor do
     end
   end
 
-  defp maybe_start_attempt(attempt, project) do
-    case Repo.all(Attempt.all_for_project(project.id, :running)) do
-      [] -> start_attempt(attempt, project)
-      [_attempt | _] -> :ok
-    end
-  end
-
-  defp start_attempt(attempt, project) do
+  defp start_attempt(attempt, project, patch, arguments) do
     attempt =
       attempt
       |> Repo.preload([:patch])
@@ -188,9 +181,6 @@ defmodule BorsNG.Worker.Attemptor do
         repo_conn,
         attempt.into_branch
       )
-
-    patch = attempt.patch
-    arguments = attempt.arguments
 
     GitHub.synthesize_commit!(
       repo_conn,
@@ -328,8 +318,6 @@ defmodule BorsNG.Worker.Attemptor do
     attempt
     |> Attempt.changeset(%{state: state, last_polled: now})
     |> Repo.update!()
-
-    maybe_start_next_attempt(state, project)
   end
 
   defp maybe_complete_attempt(:ok, project, patch, statuses) do
@@ -351,20 +339,6 @@ defmodule BorsNG.Worker.Attemptor do
 
   defp maybe_complete_attempt(:running, _project, _patch, _statuses) do
     :ok
-  end
-
-  defp maybe_start_next_attempt(:running, _project) do
-    :ok
-  end
-
-  defp maybe_start_next_attempt(_state, project) do
-    case Repo.all(Attempt.all_for_project(project.id, :waiting)) do
-      [] ->
-        :ok
-
-      [attempt | _] ->
-        maybe_start_attempt(attempt, project)
-    end
   end
 
   defp timeout_attempt(attempt, project, patch) do
